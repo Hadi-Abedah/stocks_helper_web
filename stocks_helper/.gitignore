@@ -1,0 +1,40 @@
+# generated / sensitive
+*.log
+*.json                        # be careful: broad; keep if you want to ignore all generated json (optional)
+credentials.json
+token.json
+tokens.json
+
+# project-specific
+dates.json
+calendar_dates.json
+companies_owned.csv
+weird_transactions.txt
+snaptrade/processed_transactions.json
+
+# local artifacts
+news/*.txt
+google_docs/*.json
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+.venv/
+
+# alerts dir specifics
+alerts/**/credentials.json
+alerts/**/token*.json
+alerts/daily_stocks_alert/*.csv
+alerts/earnings_google_docs/python-docs-433001-acddc8c4514a.json
+
+# other
+snaptrade/.env
+snaptrade/python-docs-433001-62f7d270af5b.json
+snaptrade/stocks.json
+snaptrade/transactions.csv
+snaptrade/wrong_stocks.json
+snaptrade/weird_transactions.txt
+companies.csv
