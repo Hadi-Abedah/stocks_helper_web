@@ -1,6 +1,9 @@
 
 
 
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
+
 from .helpers import was_transaction_processed, mark_transaction_as_processed
 
 
@@ -164,6 +167,24 @@ def parse_transactions_db():
     )
     from .helpers import was_transaction_processed  # (you already import at top; keeping local is fine)
 
+    # local heleprs 
+    def _to_decimal(v):
+         if v is None:
+             return None
+         try:
+             return Decimal(str(v))
+         except (InvalidOperation, TypeError, ValueError):
+             return None
+    def _parse_dt(s):
+        if not s:
+            return None
+        if s.endswith("Z"):
+            s = s.replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(s)
+        except Exception:
+            return None
+
     transactions = get_transactions_for_user()
 
     for transaction in transactions:
@@ -171,7 +192,7 @@ def parse_transactions_db():
         if not tid:
             continue
 
-        if was_transaction_processed(tid):
+        if was_transaction_processed(tid, db=True):
             continue
 
         # Default output
@@ -183,42 +204,42 @@ def parse_transactions_db():
 
             if transaction["type"] == "BUY":
                 if transaction["option_symbol"]["option_type"] == "PUT":
-                    output = buy_usd_put_option(transaction)
+                    output = buy_usd_put_option(transaction, db=True)
                 else:
-                    output = buy_usd_call_option(transaction)
+                    output = buy_usd_call_option(transaction, db=True)
 
             elif transaction["type"] == "OPTIONEXPIRATION":
-                output = option_expire(transaction)
+                output = option_expire(transaction, db=True)
 
             else:
                 raise ValueError(f"Unknown option transaction type {transaction['type']}")
 
         elif transaction["type"] == "CONTRIBUTION":
-            output = deposit(transaction)
+            output = deposit(transaction, db=True)
 
         elif transaction["currency"]["code"] == "USD" and transaction["type"] == "BUY":
-            output = buy_usd_stock(transaction)
+            output = buy_usd_stock(transaction, db=True)
 
         elif transaction["currency"]["code"] == "USD" and transaction["type"] == "SELL":
-            output = sell_usd_stock(transaction)
+            output = sell_usd_stock(transaction, db=True)
 
         elif transaction["currency"]["code"] == "CAD" and transaction["type"] == "BUY":
-            output = buy_cad_stock(transaction)
+            output = buy_cad_stock(transaction, db=True)
 
         elif transaction["currency"]["code"] == "CAD" and transaction["type"] == "SELL":
-            output = sell_cad_stock(transaction)
+            output = sell_cad_stock(transaction, db=True)
 
         elif transaction["type"] == "FUNDS_CONVERSION":
-            output = convert_cad_to_usd(transaction)
+            output = convert_cad_to_usd(transaction, db=True)
 
         elif transaction.get("description") == "FEE":
-            output = fee(transaction)
+            output = fee(transaction, db=True)
 
         elif transaction["type"] == "DIVIDEND":
-            output = dividend(transaction)
+            output = dividend(transaction, db=True)
 
         elif transaction["type"] == "TAX":
-            output = tax(transaction)
+            output = tax(transaction, db=True)
 
         else:
             # weird logging 
@@ -231,12 +252,10 @@ def parse_transactions_db():
             }
             with open(wrong_file_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, default=str, indent=4) + "\n")
-
-            # If you want to avoid repeated weirds, you can mark processed here.
-            # But keep your existing behavior:
+    
             try:
                 if tid:
-                    mark_transaction_as_processed(tid)
+                    mark_transaction_as_processed(tid, db=True)
             except Exception:
                 pass
 
@@ -245,18 +264,104 @@ def parse_transactions_db():
         # --- row-layer override for hardcoded TIDs ---
         if tid in HARD_CODED:
             output = HARD_CODED[tid]
-
-        # Ensure rows are well-formed (optional but strongly recommended)
-        rows = [
-            row for row in (output or [])
-            if isinstance(row, (list, tuple)) and len(row) == 5
-        ]
+        rows = [] 
+        for row in output or []: 
+            if not (isinstance(row, (list, tuple)) and len(row) == 5):
+                continue
+            date, acct, debit, credit, desc = row 
+            rows.append([
+                _parse_dt(date),
+                acct, 
+                _to_decimal(debit),
+                _to_decimal(credit),
+                desc,                                                                                       
+            ])
+            
 
         yield tid, rows
           
 
-if __name__ == "__main__":
-    print("Date,Account,Debit,Credit,Description")    
-    for output in parse_transactions():
-        for row in output:
-            print(row)
+
+
+
+def populate_transactions_db(force: bool = False):
+    """
+    Generator that yields field_dict) for rows suitable for inserting
+    into `web.dashboard.models.Transaction`.
+
+    - Does NOT initialize Django; caller must configure Django before using
+      these yielded values for DB insertion.
+    - Skips transactions already marked processed (unless `force=True`).
+
+    Yields:
+        a dict with keys matching the Transaction` model fields:
+            transaction_id, stock_symbol, tx_type, description, currency, amount, price,
+            units, fee, fx_rate, date
+    """
+    from datetime import datetime
+    from decimal import Decimal, InvalidOperation
+
+    from .snaptrade_api import get_transactions_for_user
+    from .helpers import was_transaction_processed
+
+    def _to_decimal(v):
+        if v is None:
+            return None
+        try:
+            return Decimal(str(v))
+        except (InvalidOperation, TypeError, ValueError):
+            return None
+
+    def _parse_dt(s):
+        if not s:
+            return None
+        if s.endswith("Z"):
+            s = s.replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(s)
+        except Exception:
+            return None
+
+    txs = get_transactions_for_user()
+
+    for tx in (txs):
+ 
+
+        tid = tx.get("id")
+        if tid and was_transaction_processed(tid) and not force:
+            continue
+
+        symbol_obj = tx.get("symbol") or {}
+        stock_symbol = (symbol_obj.get("symbol") or symbol_obj.get("raw_symbol") or "")[:10]
+        tx_type = tx.get("type") or ""
+        description = tx.get("description") or ""
+        currency = (tx.get("currency") or {}).get("code") if tx.get("currency") else ""
+        amount = _to_decimal(tx.get("amount"))
+        price = _to_decimal(tx.get("price"))
+        units = _to_decimal(tx.get("units"))
+        fee = _to_decimal(tx.get("fee"))
+        fx_rate = _to_decimal(tx.get("fx_rate"))
+        date = _parse_dt(tx.get("settlement_date") or tx.get("trade_date"))
+
+        field_values = {
+            "transaction_id": tid,
+            "stock_symbol": stock_symbol,
+            "tx_type": tx_type,
+            "description": description,
+            "currency": currency,
+            "amount": amount,
+            "price": price,
+            "units": units,
+            "fee": fee,
+            "fx_rate": fx_rate,
+            "date": date,
+        }
+
+        yield field_values
+
+
+#if __name__ == "__main__":
+#    print("Date,Account,Debit,Credit,Description")    
+#    for output in parse_transactions():
+#        for row in output:
+#            print(row)

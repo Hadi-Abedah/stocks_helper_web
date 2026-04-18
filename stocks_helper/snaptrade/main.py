@@ -1,3 +1,4 @@
+from .db_writer import write_journal_to_db, write_transactions_to_db
 from .snaptrade_api import get_transactions_for_user
 from .helpers import find_credited_invst_amount, update_invst_amounts
 from .transactions import buy_usd_stock, buy_cad_stock, sell_usd_stock, sell_cad_stock, deposit, convert_cad_to_usd, fee, dividend, tax
@@ -10,6 +11,9 @@ import argparse
 def main(db: bool = False, csv: bool = False, google_sheets: bool = False):
     if db:
         print("Database functionality not implemented yet.")
+
+        write_journal_to_db()
+        #write_transactions_to_db(force=True)
     elif csv:
         csv_writer()
     elif google_sheets:

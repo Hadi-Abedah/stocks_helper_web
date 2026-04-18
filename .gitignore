@@ -1,0 +1,67 @@
+#######################################
+# Python / build artifacts
+#######################################
+__pycache__/
+*.py[cod]
+*.so
+
+#######################################
+# Virtual environment
+#######################################
+.venv/
+
+#######################################
+# Logs
+#######################################
+*.log
+
+#######################################
+# Secrets / auth / env
+#######################################
+credentials.json
+token.json
+tokens.json
+.env
+*.env
+
+# SnapTrade env
+stocks_helper/snaptrade/.env
+
+#######################################
+# Project-specific generated files
+#######################################
+stocks_helper/dates.json
+stocks_helper/calendar_dates.json
+stocks_helper/companies_owned.csv
+stocks_helper/companies.csv
+
+#######################################
+# SnapTrade generated/runtime files
+#######################################
+stocks_helper/snaptrade/processed_transactions.json
+stocks_helper/snaptrade/processed_transactions_db.json
+stocks_helper/snaptrade/stocks.json
+stocks_helper/snaptrade/stocks_db.json
+stocks_helper/snaptrade/transactions.csv
+stocks_helper/snaptrade/wrong_stocks.json
+stocks_helper/snaptrade/weird_transactions.txt
+
+# service-account / docs auth file kept from original ignore
+stocks_helper/snaptrade/python-docs-433001-62f7d270af5b.json
+
+#######################################
+# Alerts local/generated files
+#######################################
+stocks_helper/alerts/**/credentials.json
+stocks_helper/alerts/**/token*.json
+stocks_helper/alerts/daily_change_telegram/*.csv
+
+
+
+# exact service-account file kept from original ignore
+stocks_helper/alerts/earnings_google_docs/python-docs-433001-acddc8c4514a.json
+
+#######################################
+# Django local DB
+#######################################
+web/db.sqlite3

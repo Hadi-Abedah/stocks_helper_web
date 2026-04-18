@@ -1,6 +1,6 @@
-from .snaptrade_api import get_api_status, list_accounts, list_account_holdings, get_transactions_for_user
 
-def deposit(transaction):
+
+def deposit(transaction, db=False):
     from datetime import datetime
     from .helpers import mark_transaction_as_processed
 
@@ -10,11 +10,11 @@ def deposit(transaction):
 
     row1 = [str(date), "TFSA (CAD)", f"{amount:.2f}", "", f"{description} CAD"]
     row2 = [str(date), "Cash (CAD)", "", f"{amount:.2f}", f"{description} CAD"]
-    mark_transaction_as_processed(transaction["id"])
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
-def buy_usd_stock(transaction):
-    from .helpers import update_invst_amounts, was_transaction_processed, mark_transaction_as_processed
+def buy_usd_stock(transaction, db=False):
+    from .helpers import update_invst_amounts, mark_transaction_as_processed
     from datetime import datetime
 
     date = datetime.fromisoformat(transaction['settlement_date'].rstrip('Z')).date()
@@ -25,13 +25,20 @@ def buy_usd_stock(transaction):
     row1 = [str(date), "TFSA (USD)", "", f"{amount:.2f}", f"{description} USD"]
     row2 = [str(date), "Investment (USD)", f"{amount:.2f}", "", f"{description} USD"]
 
-    update_invst_amounts(transaction['id'], abs(transaction['units']), symbol, transaction['price'], transaction['settlement_date'])
-    mark_transaction_as_processed(transaction["id"])
+    update_invst_amounts(
+        transaction['id'],
+        abs(transaction['units']),
+        symbol,
+        transaction['price'],
+        transaction['settlement_date'],
+        db=db,
+    )
+    mark_transaction_as_processed(transaction["id"], db=db)
 
     return row1, row2
 
 
-def sell_usd_stock(transaction):
+def sell_usd_stock(transaction, db=False):
     from .helpers import find_credited_invst_amount
     from datetime import datetime
     from .helpers import mark_transaction_as_processed
@@ -42,7 +49,9 @@ def sell_usd_stock(transaction):
     description = transaction['description']
 
     row1 = [str(date), "TFSA (USD)", f"{debited_cash_amount:.2f}", "", f"{description} USD"]
-    credited_invst_amount = find_credited_invst_amount(abs(transaction['units']), symbol)
+    credited_invst_amount = find_credited_invst_amount(
+        abs(transaction['units']), symbol, db=db
+    )
     row2 = [str(date), "Investment (USD)", "", f"{credited_invst_amount:.2f}", f"{description} USD"]
 
     realized_gain_loss = debited_cash_amount - credited_invst_amount
@@ -52,11 +61,11 @@ def sell_usd_stock(transaction):
     else:
         row3 = [str(date), account, f"{abs(realized_gain_loss):.2f}", "", f"{description} USD"]
 
-    mark_transaction_as_processed(transaction["id"])
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2, row3
 
-def buy_cad_stock(transaction):
-    from .helpers import update_invst_amounts, was_transaction_processed, mark_transaction_as_processed
+def buy_cad_stock(transaction, db=False):
+    from .helpers import update_invst_amounts, mark_transaction_as_processed
     from datetime import datetime
 
     date = datetime.fromisoformat(transaction['settlement_date'].rstrip('Z')).date()
@@ -67,13 +76,20 @@ def buy_cad_stock(transaction):
     row1 = [str(date), "TFSA (CAD)", "", f"{amount:.2f}", f"{description} CAD"]
     row2 = [str(date), "Investment (CAD)", f"{amount:.2f}", "", f"{description} CAD"]
 
-    update_invst_amounts(transaction['id'], abs(transaction['units']), symbol, transaction['price'], transaction['settlement_date'])
-    mark_transaction_as_processed(transaction["id"])
+    update_invst_amounts(
+        transaction['id'],
+        abs(transaction['units']),
+        symbol,
+        transaction['price'],
+        transaction['settlement_date'],
+        db=db,
+    )
+    mark_transaction_as_processed(transaction["id"], db=db)
 
     return row1, row2
 
 
-def sell_cad_stock(transaction):
+def sell_cad_stock(transaction, db=False):
     from .helpers import find_credited_invst_amount
     from datetime import datetime
     from .helpers import mark_transaction_as_processed
@@ -84,7 +100,9 @@ def sell_cad_stock(transaction):
     description = transaction['description']
 
     row1 = [str(date), "TFSA (CAD)", f"{debited_cash_amount:.2f}", "", f"{description} CAD"]
-    credited_invst_amount = find_credited_invst_amount(abs(transaction['units']), symbol)
+    credited_invst_amount = find_credited_invst_amount(
+        abs(transaction['units']), symbol, db=db
+    )
     row2 = [str(date), "Investment (CAD)", "", f"{credited_invst_amount:.2f}", f"{description} CAD"]
 
     realized_gain_loss = debited_cash_amount - credited_invst_amount
@@ -94,10 +112,10 @@ def sell_cad_stock(transaction):
     else:
         row3 = [str(date), account, f"{abs(realized_gain_loss):.2f}", "", f"{description} CAD"]
 
-    mark_transaction_as_processed(transaction["id"])
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2, row3
 
-def convert_cad_to_usd(transaction):
+def convert_cad_to_usd(transaction, db=False):
     from datetime import datetime
     from .helpers import mark_transaction_as_processed
 
@@ -108,10 +126,10 @@ def convert_cad_to_usd(transaction):
     row1 = [str(date), "TFSA (USD)", f"{amount}", "", description]
     row2 = [str(date), "TFSA (CAD)", "", "", description]
     row3 = [str(date), "Currency Conversion Expense (CAD)", "", "", description]
-    mark_transaction_as_processed(transaction["id"])
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2, row3
 
-def fee(transaction):
+def fee(transaction, db=False):
     from datetime import datetime
     from .helpers import mark_transaction_as_processed
 
@@ -121,10 +139,10 @@ def fee(transaction):
 
     row1 = [str(date), "TFSA (CAD)", "", f"{amount:.2f}", description]
     row2 = [str(date), "Fee Expense (CAD)", f"{amount:.2f}", "", description]
-    mark_transaction_as_processed(transaction["id"])
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
-def dividend(transaction):
+def dividend(transaction, db=False):
     from datetime import datetime
     from .helpers import mark_transaction_as_processed
 
@@ -138,10 +156,10 @@ def dividend(transaction):
 
     row1 = [str(date), tfsa_account, f"{amount:.2f}", "", description]
     row2 = [str(date), income_account, "", f"{amount:.2f}", description]
-    mark_transaction_as_processed(transaction["id"])
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
-def tax(transaction):
+def tax(transaction, db=False):
     from datetime import datetime
     from .helpers import mark_transaction_as_processed
 
@@ -152,13 +170,13 @@ def tax(transaction):
 
     row1 = [str(date), "TFSA (USD)", "", f"{amount:.2f}", description]
     row2 = [str(date), "Tax Expense (USD)", f"{amount:.2f}", "", f"{description}({symbol_description})"]
-    mark_transaction_as_processed(transaction["id"])
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
 
 
 
-def buy_usd_put_option(transaction):
+def buy_usd_put_option(transaction, db=False):
     """
     Handle a BUY for one or more PUT contracts settled in USD.
     Produces two journal rows identical to buy_usd_stock(), except that the
@@ -185,13 +203,21 @@ def buy_usd_put_option(transaction):
     row1 = [str(date), "TFSA (USD)", "",           f"{amount:.2f}", f"{description} USD"]
     row2 = [str(date), "Investment (USD)", f"{amount:.2f}", "",         f"{description} USD"]
 
-    update_invst_amounts(transaction["id"], contracts, option_tkr, transaction["price"], transaction["settlement_date"], is_option=True)
-    mark_transaction_as_processed(transaction["id"])
+    update_invst_amounts(
+        transaction["id"],
+        contracts,
+        option_tkr,
+        transaction["price"],
+        transaction["settlement_date"],
+        is_option=True,
+        db=db,
+    )
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
 
 
-def buy_usd_call_option(transaction):
+def buy_usd_call_option(transaction, db=False):
     """
     Buy one or more CALL contracts settled in USD.
     """
@@ -209,13 +235,20 @@ def buy_usd_call_option(transaction):
     row1 = [str(date), "TFSA (USD)", "", f"{amount:.2f}", f"{descr} USD"]
     row2 = [str(date), "Investment (USD)", f"{amount:.2f}", "", f"{descr} USD"]
 
-    update_invst_amounts(contracts, symbol, transaction["price"],
-                         transaction["settlement_date"], is_option=True)
-    mark_transaction_as_processed(transaction["id"])
+    update_invst_amounts(
+        transaction["id"],
+        contracts,
+        symbol,
+        transaction["price"],
+        transaction["settlement_date"],
+        is_option=True,
+        db=db,
+    )
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
 
-def buy_cad_put_option(transaction):
+def buy_cad_put_option(transaction, db=False):
     """
     Buy PUT contracts settled in CAD.
     """
@@ -233,13 +266,20 @@ def buy_cad_put_option(transaction):
     row1 = [str(date), "TFSA (CAD)", "", f"{amount:.2f}", f"{descr} CAD"]
     row2 = [str(date), "Investment (CAD)", f"{amount:.2f}", "", f"{descr} CAD"]
 
-    update_invst_amounts(contracts, symbol, transaction["price"],
-                         transaction["settlement_date"], is_option=True)
-    mark_transaction_as_processed(transaction["id"])
+    update_invst_amounts(
+        transaction["id"],
+        contracts,
+        symbol,
+        transaction["price"],
+        transaction["settlement_date"],
+        is_option=True,
+        db=db,
+    )
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
 
-def buy_cad_call_option(transaction):
+def buy_cad_call_option(transaction, db=False):
     """
     Buy CALL contracts settled in CAD.
     """
@@ -257,30 +297,38 @@ def buy_cad_call_option(transaction):
     row1 = [str(date), "TFSA (CAD)", "", f"{amount:.2f}", f"{descr} CAD"]
     row2 = [str(date), "Investment (CAD)", f"{amount:.2f}", "", f"{descr} CAD"]
 
-    update_invst_amounts(contracts, symbol, transaction["price"],
-                         transaction["settlement_date"], is_option=True)
-    mark_transaction_as_processed(transaction["id"])
+    update_invst_amounts(
+        transaction["id"],
+        contracts,
+        symbol,
+        transaction["price"],
+        transaction["settlement_date"],
+        is_option=True,
+        db=db,
+    )
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
 
-def option_expire(transaction):
+def option_expire(transaction, db=False):
 
     from .helpers import find_credited_invst_amount_options
     from datetime import datetime
     from .helpers import mark_transaction_as_processed
 
+
     date = datetime.fromisoformat(transaction['settlement_date'].rstrip('Z')).date()
     symbol = transaction['symbol']['symbol']
     currency = transaction["currency"]["code"]
     description = f"{transaction['description']}_{symbol}"
-    premium_paid = find_credited_invst_amount_options(symbol)
+    premium_paid = find_credited_invst_amount_options(symbol, db=db)
 
     # Record the expired option premium as a debit in the realized gain/loss account
     account = f"Realized Gain/Loss ({currency})"
     row1 = [str(date), account, f"{premium_paid:.2f}", "", f"{description}"]
     row2 = [str(date), f"Investment ({currency})", "", f"{premium_paid:.2f}", f"{description}"]
 
-    mark_transaction_as_processed(transaction["id"])
+    mark_transaction_as_processed(transaction["id"], db=db)
     return row1, row2
 
 

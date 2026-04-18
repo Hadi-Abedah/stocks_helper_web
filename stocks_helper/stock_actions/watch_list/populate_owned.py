@@ -1,4 +1,4 @@
-from snaptrade.snaptrade_api import list_account_holdings 
+from ...snaptrade.snaptrade_api import list_account_holdings
 from pathlib import Path
 
 def populate_companies_file(): 

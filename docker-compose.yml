@@ -1,0 +1,26 @@
+
+services:
+  web:
+    build: .
+    working_dir: /app/web
+    environment:
+      PYTHONPATH: /app:/app/web
+      DJANGO_SETTINGS_MODULE: stocks_web.settings
+    volumes:
+      - .:/app
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+
+  automation:
+    build: .
+    working_dir: /app
+    env_file:
+      - stocks_helper/snaptrade/.env
+    environment:
+      PYTHONPATH: /app:/app/web
+      DJANGO_SETTINGS_MODULE: stocks_web.settings
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - .:/app
+    command: python -m stocks_helper.snaptrade.main --db

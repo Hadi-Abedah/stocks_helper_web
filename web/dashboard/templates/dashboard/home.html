@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Home{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <h1>Tracked Stocks</h1>
+            <p class="lead">Welcome to your stocks helper dashboard</p>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        {% for symbol in stock_symbols %}
+        {% if symbol %}
+        <div class="col-md-3 mb-4">
+            
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <a href="{% url 'dashboard:stock_detail' stock_symbol=symbol %}">
+                        <h5 class="card-title">{{ symbol }}</h5>
+                    </a>
+                </div>
+            </div>
+            
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

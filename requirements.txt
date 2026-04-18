@@ -42,4 +42,4 @@ urllib3
 validators
 webencodings
 yfinance
-
+Django 

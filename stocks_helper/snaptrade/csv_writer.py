@@ -1,6 +1,6 @@
 import csv
 import os
-from snaptrade.transaction_parser import parse_transactions
+from .transaction_parser import parse_transactions
 
 
 def csv_writer(filepath: str | None = None):

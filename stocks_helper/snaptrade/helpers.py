@@ -3,7 +3,7 @@ import json
 import json
 import os
 
-def find_credited_invst_amount(sold_shares, ticker, file_path=None):
+def find_credited_invst_amount(sold_shares, ticker, file_path=None, db=False):
     """
     Calculates the total credited amount when selling a number of shares for a given stock ticker.
     
@@ -23,9 +23,12 @@ def find_credited_invst_amount(sold_shares, ticker, file_path=None):
         FileNotFoundError: If the specified JSON file doesn't exist.
         ValueError: If not enough shares are available to fulfill the sell request.
     """
-
+    base_path = os.path.dirname(__file__)
     if file_path is None:
-        file_path = os.path.join(os.path.dirname(__file__), "stocks.json")
+        file_path = os.path.join(base_path, "stocks.json")
+    if db:
+        file_path = os.path.join(base_path, "stocks_db.json")  
+
         
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"{file_path} does not exist.")
@@ -60,7 +63,7 @@ def find_credited_invst_amount(sold_shares, ticker, file_path=None):
     return total_amount
 
 
-def update_invst_amounts(transaction_id, bought_shares, ticker, price, date, is_option=None,file_path=None):
+def update_invst_amounts(transaction_id, bought_shares, ticker, price, date, is_option=None,file_path=None,db=False):
 
     """
     Write to a JSON file to track stock purchases for later selling.
@@ -74,9 +77,11 @@ def update_invst_amounts(transaction_id, bought_shares, ticker, price, date, is_
         file_path (str): Path to stocks.json file. Defaults to local directory.
     """
     from datetime import datetime
-
+    base_path = os.path.dirname(__file__)
     if file_path is None:
-        file_path = os.path.join(os.path.dirname(__file__), "stocks.json")
+        file_path = os.path.join(base_path, "stocks.json")
+    if db:
+        file_path = os.path.join(base_path, "stocks_db.json")  
 
         
     date = datetime.fromisoformat(date).strftime("%Y-%m-%d")
@@ -172,7 +177,7 @@ def was_transaction_processed(transaction_id, db=False):
 import os
 import json
 
-def find_credited_invst_amount_options(ticker, file_path=None):
+def find_credited_invst_amount_options(ticker, file_path=None, db=False):
     """
     Calculates the total credited amount when an option contract expires and update the value to zero after processing.
 
@@ -188,9 +193,11 @@ def find_credited_invst_amount_options(ticker, file_path=None):
         FileNotFoundError: If the specified JSON file doesn't exist.
         
     """
-
+    base_path = os.path.dirname(__file__)
     if file_path is None:
-        file_path = os.path.join(os.path.dirname(__file__), "stocks.json")
+        file_path = os.path.join(base_path, "stocks.json")
+    if db:
+        file_path = os.path.join(base_path, "stocks_db.json")                                                                                               
         
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"{file_path} does not exist.")

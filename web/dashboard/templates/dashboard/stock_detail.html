@@ -1,0 +1,38 @@
+
+{% extends "base.html" %} 
+{% load math_filters %}
+{% block title %}Stock Detail {% endblock %}
+
+{% block content %} 
+<div class="container mt-5">
+    <h1>Transactions</h1>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>{{ transaction.date }}</td>
+                    <td>{{ transaction.tx_type }}</td>
+                    <td>{{ transaction.units | positive }}</td>
+                                        <td>{{ transaction.currency }} {{ transaction.price | floatformat:2 }}</td>
+                    <td>${{ transaction.amount | positive }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No transactions found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
