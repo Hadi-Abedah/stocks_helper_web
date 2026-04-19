@@ -1,11 +1,11 @@
 import json
 from pathlib import Path
-from alerts.earnings_calendar.calendar_actions import create_event, update_event, delete_event, DEFAULT_TZ, DEFAULT_CALENDAR_ID
+from stocks_helper.alerts.earnings_calendar.calendar_actions import create_event, update_event, delete_event, DEFAULT_TZ, DEFAULT_CALENDAR_ID
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo  
-from stock_actions.watch_list.main import read as read_watch_list
-from stock_actions.earnings import nxt_ear
+from stocks_helper.stock_actions.watch_list.main import read as read_watch_list
+from stocks_helper.stock_actions.earnings import nxt_ear
 TZ = ZoneInfo(DEFAULT_TZ)
 
 def _parse_local_window(date_str: str):

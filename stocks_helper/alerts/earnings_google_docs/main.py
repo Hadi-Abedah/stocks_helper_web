@@ -1,6 +1,6 @@
 from . import  write, clean
-from stock_actions.earnings import nxt_ear 
-from stock_actions.watch_list.main import read as read_watch_list
+from stocks_helper.stock_actions.earnings import nxt_ear 
+from stocks_helper.stock_actions.watch_list.main import read as read_watch_list
 from datetime import datetime
 import re
 
