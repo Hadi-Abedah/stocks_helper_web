@@ -65,3 +65,8 @@ stocks_helper/alerts/earnings_google_docs/python-docs-433001-acddc8c4514a.json
 # Django local DB
 #######################################
 web/db.sqlite3
+
+
+# Yahoo automation secrets
+stocks_helper/alerts/yahoo_portfolio_sync/.yahoo_state.json
+stocks_helper/alerts/yahoo_portfolio_sync/.env
