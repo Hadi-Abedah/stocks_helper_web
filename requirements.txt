@@ -43,3 +43,4 @@ validators
 webencodings
 yfinance
 Django 
+playwright
