@@ -3,18 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from dotenv import load_dotenv
+from playwright.sync_api import sync_playwright
 
-from .actions import (
-    open_portfolios_page,
-    open_portfolio,
-    click_add_tickers,
-    fill_ticker_lookup,
-    select_ticker_result,
-    confirm_add_ticker,
-)
 from .auth import ensure_logged_in
-from .client import build_client
-from .schemas import load_config
+from .client import YahooPortfolioClient
+from .schemas import load_config, PortfolioName
+
+# Demo inputs for now
+TICKERS = ["AKAN", "GME"]
+PORTFOLIO: PortfolioName = "risky"
 
 
 def main() -> None:
@@ -22,23 +19,28 @@ def main() -> None:
     load_dotenv(env_path)
 
     config = load_config()
-    client = build_client(config)
 
-    try:
-        ensure_logged_in(client.page, config, client.context)
-        open_portfolios_page(client.page, config)
-        open_portfolio(client.page, "my holdings")
-        click_add_tickers(client.page)
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
 
-        fill_ticker_lookup(client.page, "CLBT")
-        select_ticker_result(client.page, "CLBT")
-        confirm_add_ticker(client.page)
+        context = browser.new_context(
+            storage_state=str(config.state_file) if config.state_file.exists() else None
+        )
+        page = context.new_page()
 
-        print("[INFO] Add-ticker flow completed.")
-        #client.page.pause()
+        ensure_logged_in(page, config, context)
 
-    finally:
-        client.close()
+        client = YahooPortfolioClient(page=page, config=config)
+        results = client.add_tickers_to_portfolio(
+            portfolio_name=PORTFOLIO,
+            tickers=TICKERS,
+        )
+
+        print("\n[RESULTS]")
+        for result in results:
+            print(f"{result.ticker}: {result.status}")
+
+        browser.close()
 
 
 if __name__ == "__main__":

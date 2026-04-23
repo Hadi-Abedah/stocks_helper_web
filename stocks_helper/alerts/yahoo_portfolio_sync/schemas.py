@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 import os
 
 
@@ -16,6 +17,8 @@ class YahooPortfolioConfig:
     headless: bool
     slow_mo_ms: int
     timeout_ms: int
+
+PortfolioName = Literal["risky", "my holdings", "cad"]
 
 
 def load_config() -> YahooPortfolioConfig:

@@ -1,8 +1,9 @@
+#deprecated 
 from __future__ import annotations
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
-from .schemas import YahooPortfolioConfig
+from .schemas import YahooPortfolioConfig, PortfolioName
 from . import selectors
 
 
@@ -22,7 +23,7 @@ def click_my_portfolio_menu(page: Page) -> None:
     trigger.click()
 
 
-def choose_portfolio_from_menu(page: Page, portfolio_name: str) -> None:
+def choose_portfolio_from_menu(page: Page, portfolio_name: PortfolioName) -> None:
     """
     Clicks a portfolio name from the open My Portfolio dropdown.
 
@@ -83,15 +84,22 @@ def fill_ticker_lookup(page: Page, ticker: str) -> None:
 
     print(f"[INFO] Filled ticker lookup with: {ticker}")
 
-def select_ticker_result(page: Page, ticker: str) -> None:
+def select_ticker_result(page: Page, ticker: str) -> bool:
     dialog = get_add_ticker_dialog(page)
 
-    # First visible row containing the ticker text inside the modal.
-    result = dialog.get_by_text(ticker, exact=True).first
-    result.wait_for(timeout=10_000)
-    result.click()
+    # Find the row that contains the ticker
+    row = dialog.locator("li").filter(has_text=ticker).first
+    row.wait_for(timeout=10_000)
 
+    checkbox = row.locator("input[type='checkbox']")
+
+    if checkbox.is_disabled():
+        print(f"[INFO] Ticker already added (disabled): {ticker}")
+        return False
+
+    row.click()
     print(f"[INFO] Selected ticker result for: {ticker}")
+    return True
 
 def confirm_add_ticker(page: Page) -> None:
     dialog = get_add_ticker_dialog(page)

@@ -1,108 +1,106 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
+from typing import Iterable, Literal
 
-from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
+from playwright.sync_api import Page
 
-from .schemas import YahooPortfolioConfig
+from .schemas import YahooPortfolioConfig, PortfolioName
 
-from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
-from .schemas import YahooPortfolioConfig
-from . import selectors
+AddTickerStatus = Literal["added", "already_present"]
 
 
 @dataclass
-class YahooClient:
-    playwright: Playwright
-    browser: Browser
-    context: BrowserContext
-    page: Page
-
-    def close(self) -> None:
-        self.context.close()
-        self.browser.close()
-        self.playwright.stop()
+class AddTickerResult:
+    ticker: str
+    status: AddTickerStatus
 
 
-def build_client(config: YahooPortfolioConfig) -> YahooClient:
-    playwright = sync_playwright().start()
+class YahooPortfolioClient:
+    def __init__(self, page: Page, config: YahooPortfolioConfig) -> None:
+        self.page = page
+        self.config = config
 
-    browser = playwright.chromium.launch(
-        headless=config.headless,
-        slow_mo=config.slow_mo_ms,
-    )
+    def open_portfolios_page(self) -> None:
+        self.page.goto(self.config.portfolio_url, wait_until="domcontentloaded")
 
-    context_kwargs = {
-        "viewport": {"width": 1400, "height": 1000},
-    }
+    def open_portfolio(self, portfolio_name: PortfolioName) -> None:
+        self.page.get_by_text("Portfolio Name", exact=True).wait_for(timeout=10_000)
+        portfolio_link = self.page.locator(
+            f"a:visible:has-text('{portfolio_name}')"
+        ).first
+        portfolio_link.click()
+        self.page.wait_for_url("**/portfolio/**", timeout=15_000)
+        self.page.get_by_role("button", name="Add tickers").wait_for(timeout=15_000)
 
-    if config.state_file.exists():
-        print(f"[INFO] Loading saved auth state from: {config.state_file}")
-        context_kwargs["storage_state"] = str(config.state_file) #type: ignore
+    def click_add_tickers(self) -> None:
+        self.page.get_by_role("button", name="Add tickers").click()
 
-    context = browser.new_context(**context_kwargs) #type: ignore
-    page = context.new_page()
-    page.set_default_timeout(config.timeout_ms)
+    def get_add_ticker_dialog(self):
+        dialog = self.page.get_by_role("alertdialog")
+        dialog.wait_for(timeout=10_000)
+        return dialog
 
-    return YahooClient(
-        playwright=playwright,
-        browser=browser,
-        context=context,
-        page=page,
-    )
+    def fill_ticker_lookup(self, ticker: str) -> None:
+        dialog = self.get_add_ticker_dialog()
+        quote_input = dialog.get_by_placeholder("Quote Lookup")
+        quote_input.wait_for(timeout=10_000)
+        quote_input.fill(ticker)
 
+    def select_ticker_result(self, ticker: str) -> bool:
+        dialog = self.get_add_ticker_dialog()
+        row = dialog.locator("li").filter(has_text=ticker).first
+        row.wait_for(timeout=10_000)
 
-# portfolio 
+        checkbox = row.locator("input[type='checkbox']")
+        if checkbox.is_disabled():
+            return False
 
+        row.click()
+        return True
 
+    def confirm_add_ticker(self) -> None:
+        dialog = self.get_add_ticker_dialog()
+        add_button = dialog.get_by_role("button", name="Add ticker")
+        add_button.wait_for(timeout=10_000)
+        add_button.click()
 
-def open_portfolios_page(page: Page, config: YahooPortfolioConfig) -> None:
-    page.goto(config.portfolio_url, wait_until="domcontentloaded")
+    def add_ticker_to_portfolio(
+        self,
+        portfolio_name: PortfolioName,
+        ticker: str,
+    ) -> AddTickerResult:
+        self.open_portfolios_page()
+        self.open_portfolio(portfolio_name)
+        self.click_add_tickers()
+        self.fill_ticker_lookup(ticker)
 
+        if not self.select_ticker_result(ticker):
+            return AddTickerResult(ticker=ticker, status="already_present")
 
-def debug_url(page: Page, label: str) -> None:
-    print(f"[DEBUG] {label} URL: {page.url}")
+        self.confirm_add_ticker()
+        return AddTickerResult(ticker=ticker, status="added")
 
+    def add_tickers_to_portfolio(
+        self,
+        portfolio_name: PortfolioName,
+        tickers: Iterable[str],
+    ) -> list[AddTickerResult]:
+        self.open_portfolios_page()
+        self.open_portfolio(portfolio_name)
 
-def click_my_portfolio_menu(page: Page) -> None:
-    """
-    Opens the top-left 'My Portfolio' dropdown/menu.
-    """
-    trigger = page.get_by_text(selectors.MY_PORTFOLIO_TRIGGER_TEXT, exact=True).first
-    trigger.click()
+        results: list[AddTickerResult] = []
 
+        for ticker in tickers:
+            self.click_add_tickers()
+            self.fill_ticker_lookup(ticker)
 
-def choose_portfolio_from_menu(page: Page, portfolio_name: str) -> None:
-    """
-    Clicks a portfolio name from the open My Portfolio dropdown.
+            if not self.select_ticker_result(ticker):
+                results.append(AddTickerResult(ticker=ticker, status="already_present"))
+                continue
 
-    From your screenshot, the visible portfolio name text is inside:
-    <span class="item-content ...">my holdings</span>
+            self.confirm_add_ticker()
+            results.append(AddTickerResult(ticker=ticker, status="added"))
 
-    So text-based locator is a good first choice.
-    """
-    item = page.get_by_text(portfolio_name, exact=True).first
-    item.click()
-
-
-def open_portfolio(page: Page, portfolio_name: str) -> None:
-    click_my_portfolio_menu(page)
-    choose_portfolio_from_menu(page, portfolio_name)
-    page.wait_for_url("**/portfolio/**", timeout=15_000)
-    page.get_by_role("button", name=selectors.ADD_TICKERS_BUTTON_NAME).wait_for(timeout=10_000)
-    debug_url(page, f"Opened portfolio '{portfolio_name}'")
-
-
-def click_add_tickers(page: Page) -> None:
-    """
-    Click the 'Add tickers' button inside a portfolio page.
-    """
-    add_button = page.get_by_role("button", name=selectors.ADD_TICKERS_BUTTON_NAME)
-    add_button.click()
-
-    # After clicking, a dialog / panel / form should appear.
-    # We do not know the exact final markup yet, so for now we only confirm
-    # the button was clickable and the page remains interactive.
-    print("[INFO] Clicked 'Add tickers' button.")
+        return results

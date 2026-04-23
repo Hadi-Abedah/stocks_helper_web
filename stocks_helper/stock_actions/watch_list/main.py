@@ -1,7 +1,9 @@
-def read():
+
+def read() -> list[str]:
     """
     This function reads the companies.csv and companies_owned.csv files and returns a list of unique companies.
     It first populates the companies_owned.csv file then reads both files and combines the companies into a single list, removing duplicates.
+
     """
     from pathlib import Path
     from . import populate_owned
