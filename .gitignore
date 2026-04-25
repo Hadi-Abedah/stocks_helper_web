@@ -54,7 +54,7 @@ stocks_helper/snaptrade/python-docs-433001-62f7d270af5b.json
 #######################################
 stocks_helper/alerts/**/credentials.json
 stocks_helper/alerts/**/token*.json
-stocks_helper/alerts/daily_change_telegram/*.csv
+#stocks_helper/alerts/daily_change_telegram/*.csv
 
 
 

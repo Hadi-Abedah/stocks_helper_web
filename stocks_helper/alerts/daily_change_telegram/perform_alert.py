@@ -45,8 +45,8 @@ def chunked(iterable, n):
 def main():
     script_dir = Path(__file__).parent
     all_dfs = [
-        pd.read_csv(f"{script_dir}/nasdaq_screener_1747363955212.csv"),
-        pd.read_csv(f"{script_dir}/nasdaq_screener_1747364000664.csv")
+        pd.read_csv(f"{script_dir}/nasdaq_screener_1777159701215.csv"),
+        pd.read_csv(f"{script_dir}/nasdaq_screener_1777159958794.csv")
     ]
 
     combined_df = pd.concat(all_dfs, ignore_index=True)
