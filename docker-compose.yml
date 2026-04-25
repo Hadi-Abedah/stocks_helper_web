@@ -23,4 +23,6 @@ services:
       PYTHONUNBUFFERED: "1"
     volumes:
       - .:/app
+    profiles:
+      - jobs
 #    command: python -m stocks_helper.snaptrade.main --db
