@@ -3,12 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Literal
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Locator, TimeoutError as PlaywrightTimeoutError
+
 
 from .schemas import YahooPortfolioConfig, PortfolioName
 
 
-AddTickerStatus = Literal["added", "already_present"]
+AddTickerStatus = Literal["added", "already_present", "not_found", "other_error"]
 
 
 @dataclass
@@ -37,7 +38,7 @@ class YahooPortfolioClient:
     def click_add_tickers(self) -> None:
         self.page.get_by_role("button", name="Add tickers").click()
 
-    def get_add_ticker_dialog(self):
+    def get_add_ticker_dialog(self) -> Locator:
         dialog = self.page.get_by_role("alertdialog")
         dialog.wait_for(timeout=10_000)
         return dialog
@@ -48,23 +49,50 @@ class YahooPortfolioClient:
         quote_input.wait_for(timeout=10_000)
         quote_input.fill(ticker)
 
-    def select_ticker_result(self, ticker: str) -> bool:
+    def select_ticker_result(self, ticker: str) -> AddTickerStatus:
         dialog = self.get_add_ticker_dialog()
+
         row = dialog.locator("li").filter(has_text=ticker).first
-        row.wait_for(timeout=10_000)
+
+        try:
+            row.wait_for(timeout=10_000)
+        except PlaywrightTimeoutError:
+            if dialog.get_by_text("No matching results found").is_visible():
+                return "not_found"
+            return "other_error"
 
         checkbox = row.locator("input[type='checkbox']")
         if checkbox.is_disabled():
-            return False
+            return "already_present"
 
         row.click()
-        return True
+        return "added"
+
+    
 
     def confirm_add_ticker(self) -> None:
         dialog = self.get_add_ticker_dialog()
         add_button = dialog.get_by_role("button", name="Add ticker")
         add_button.wait_for(timeout=10_000)
         add_button.click()
+        
+    def close_add_ticker_dialog(self) -> None:
+        dialog = self.get_add_ticker_dialog()
+        dialog.get_by_role("button", name="Close").click()
+        dialog.wait_for(state="hidden", timeout=10_000)
+
+    def add_ticker_to_current_portfolio(self, ticker: str) -> AddTickerResult:
+        self.click_add_tickers()
+        self.fill_ticker_lookup(ticker)
+
+        status = self.select_ticker_result(ticker)
+
+        if status != "added":
+            self.close_add_ticker_dialog()
+            return AddTickerResult(ticker=ticker, status=status)
+
+        self.confirm_add_ticker()
+        return AddTickerResult(ticker=ticker, status="added")
 
     def add_ticker_to_portfolio(
         self,
@@ -73,14 +101,7 @@ class YahooPortfolioClient:
     ) -> AddTickerResult:
         self.open_portfolios_page()
         self.open_portfolio(portfolio_name)
-        self.click_add_tickers()
-        self.fill_ticker_lookup(ticker)
-
-        if not self.select_ticker_result(ticker):
-            return AddTickerResult(ticker=ticker, status="already_present")
-
-        self.confirm_add_ticker()
-        return AddTickerResult(ticker=ticker, status="added")
+        return self.add_ticker_to_current_portfolio(ticker)
 
     def add_tickers_to_portfolio(
         self,
@@ -93,14 +114,23 @@ class YahooPortfolioClient:
         results: list[AddTickerResult] = []
 
         for ticker in tickers:
-            self.click_add_tickers()
-            self.fill_ticker_lookup(ticker)
-
-            if not self.select_ticker_result(ticker):
-                results.append(AddTickerResult(ticker=ticker, status="already_present"))
-                continue
-
-            self.confirm_add_ticker()
-            results.append(AddTickerResult(ticker=ticker, status="added"))
-
+            try:
+                result = self.add_ticker_to_current_portfolio(ticker)
+                results.append(result)
+            except PlaywrightTimeoutError:
+                print(f"[WARN] Timeout while adding {ticker}. Reopening portfolio and retrying once.")
+                self.open_portfolios_page()
+                self.open_portfolio(portfolio_name)
+                result = self.add_ticker_to_current_portfolio(ticker)
+                results.append(result)
         return results
+
+
+######
+#open page
+#open portfolio
+#for each ticker:
+#    open modal
+#    search ticker
+#    select result or close modal
+#    confirm add

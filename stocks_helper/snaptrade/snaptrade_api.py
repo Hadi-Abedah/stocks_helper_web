@@ -73,7 +73,7 @@ def list_account_holdings():
     ticker_symbols = [position["symbol"]["symbol"]["symbol"] for position in resp.get("positions", [])]
     resp = response_2.body
     ticker_symbols = ticker_symbols + [position["symbol"]["symbol"]["symbol"] for position in resp.get("positions", [])]
-    print(ticker_symbols)
+    #print(ticker_symbols)
     return ticker_symbols
 
 def get_transactions_for_user(start_date='2024-04-01', end_date=None): 
