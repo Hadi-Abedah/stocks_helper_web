@@ -29,7 +29,7 @@ def main() -> None:
     config = load_config()
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
 
         context = browser.new_context(
             storage_state=str(config.state_file) if config.state_file.exists() else None
