@@ -27,26 +27,40 @@ class YahooPortfolioClient:
         self.page.goto(self.config.portfolio_url, wait_until="domcontentloaded")
 
     def open_portfolio(self, portfolio_name: PortfolioName) -> None:
-        self.page.get_by_text("Portfolio Name", exact=True).wait_for(timeout=10_000)
+        self.page.get_by_text("Portfolio Name", exact=True).wait_for(timeout=60_000)
+
         portfolio_link = self.page.locator(
             f"a:visible:has-text('{portfolio_name}')"
         ).first
-        portfolio_link.click()
-        self.page.wait_for_url("**/portfolio/**", timeout=15_000)
-        self.page.get_by_role("button", name="Add tickers").wait_for(timeout=15_000)
+
+        portfolio_link.wait_for(state="visible", timeout=60_000)
+
+        # Yahoo may re-render the portfolio table in headless/cloud.
+        self.page.wait_for_timeout(2_000)
+
+        portfolio_link.click(timeout=60_000)
+
+        try:
+            self.page.wait_for_url("**/portfolio/**", timeout=60_000)
+            self.page.get_by_role("button", name="Add tickers").wait_for(timeout=60_000)
+        except Exception:
+            print("Did not reach expected portfolio page.")
+            print("Current URL:", self.page.url)
+            self.page.screenshot(path="/app/yahoo_portfolio_debug.png", full_page=True)
+            raise
 
     def click_add_tickers(self) -> None:
         self.page.get_by_role("button", name="Add tickers").click()
 
     def get_add_ticker_dialog(self) -> Locator:
         dialog = self.page.get_by_role("alertdialog")
-        dialog.wait_for(timeout=10_000)
+        dialog.wait_for(timeout=30_000)
         return dialog
 
     def fill_ticker_lookup(self, ticker: str) -> None:
         dialog = self.get_add_ticker_dialog()
         quote_input = dialog.get_by_placeholder("Quote Lookup")
-        quote_input.wait_for(timeout=10_000)
+        quote_input.wait_for(timeout=30_000)
         quote_input.fill(ticker)
 
     def select_ticker_result(self, ticker: str) -> AddTickerStatus:
@@ -55,7 +69,7 @@ class YahooPortfolioClient:
         row = dialog.locator("li").filter(has_text=ticker).first
 
         try:
-            row.wait_for(timeout=10_000)
+            row.wait_for(timeout=30_000)
         except PlaywrightTimeoutError:
             if dialog.get_by_text("No matching results found").is_visible():
                 return "not_found"
@@ -73,13 +87,13 @@ class YahooPortfolioClient:
     def confirm_add_ticker(self) -> None:
         dialog = self.get_add_ticker_dialog()
         add_button = dialog.get_by_role("button", name="Add ticker")
-        add_button.wait_for(timeout=10_000)
+        add_button.wait_for(timeout=30_000)
         add_button.click()
         
     def close_add_ticker_dialog(self) -> None:
         dialog = self.get_add_ticker_dialog()
         dialog.get_by_role("button", name="Close").click()
-        dialog.wait_for(state="hidden", timeout=10_000)
+        dialog.wait_for(state="hidden", timeout=30_000)
 
     def add_ticker_to_current_portfolio(self, ticker: str) -> AddTickerResult:
         self.click_add_tickers()
@@ -116,12 +130,14 @@ class YahooPortfolioClient:
         for ticker in tickers:
             try:
                 result = self.add_ticker_to_current_portfolio(ticker)
+                print(f"[INFO] {result.ticker}: {result.status}")
                 results.append(result)
             except PlaywrightTimeoutError:
                 print(f"[WARN] Timeout while adding {ticker}. Reopening portfolio and retrying once.")
                 self.open_portfolios_page()
                 self.open_portfolio(portfolio_name)
                 result = self.add_ticker_to_current_portfolio(ticker)
+                print(f"[INFO] {result.ticker}: {result.status} after retry")
                 results.append(result)
         return results
 
