@@ -27,30 +27,50 @@ class YahooPortfolioClient:
         self.page.goto(self.config.portfolio_url, wait_until="domcontentloaded")
 
     def open_portfolio(self, portfolio_name: PortfolioName) -> None:
-        self.page.get_by_text("Portfolio Name", exact=True).wait_for(timeout=60_000)
+       self.page.get_by_text("Portfolio Name", exact=True).wait_for(timeout=60_000)
 
-        portfolio_link = self.page.locator(
-            f"a:visible:has-text('{portfolio_name}')"
-        ).first
+       portfolio_link = self.page.locator(
+           f"a:visible:has-text('{portfolio_name}')"
+       ).first
 
-        portfolio_link.wait_for(state="visible", timeout=60_000)
+       portfolio_link.wait_for(state="visible", timeout=60_000)
 
-        # Yahoo may re-render the portfolio table in headless/cloud.
-        self.page.wait_for_timeout(2_000)
+       try:
+           # Normal/original behavior
+           portfolio_link.click(timeout=60_000)
 
-        portfolio_link.click(timeout=60_000)
+       except PlaywrightTimeoutError:
+           print("[WARN] Portfolio link click timed out. Falling back to direct href navigation.")
+           print("Current URL before fallback:", self.page.url)
 
-        try:
-            self.page.wait_for_url("**/portfolio/**", timeout=60_000)
-            self.page.get_by_role("button", name="Add tickers").wait_for(timeout=60_000)
-        except Exception:
-            print("Did not reach expected portfolio page.")
-            print("Current URL:", self.page.url)
-            self.page.screenshot(path="/app/yahoo_portfolio_debug.png", full_page=True)
-            raise
+           href = portfolio_link.get_attribute("href")
+           if href is None:
+               self.page.screenshot(path="/app/yahoo_portfolio_click_timeout.png", full_page=True)
+               raise RuntimeError(f"Could not find portfolio href for {portfolio_name}")
+
+           if href.startswith("/"):
+               href = f"https://finance.yahoo.com{href}"
+
+           print(f"[INFO] Opening portfolio directly: {href}")
+           self.page.goto(href, wait_until="domcontentloaded", timeout=60_000)
+
+       try:
+           self.page.wait_for_url("**/portfolio/**", timeout=60_000)
+           self.page.get_by_role("button", name="Add tickers").wait_for(timeout=60_000)
+
+       except Exception:
+           print("Did not reach expected portfolio page.")
+           print("Current URL:", self.page.url)
+           self.page.screenshot(path="/app/yahoo_portfolio_debug.png", full_page=True)
+           raise
 
     def click_add_tickers(self) -> None:
-        self.page.get_by_role("button", name="Add tickers").click()
+        add_button = self.page.get_by_role("button", name="Add tickers")
+        add_button.wait_for(timeout=60_000)
+    
+        add_button.click(timeout=60_000, no_wait_after=True)
+    
+        self.page.get_by_role("alertdialog").wait_for(timeout=60_000)
 
     def get_add_ticker_dialog(self) -> Locator:
         dialog = self.page.get_by_role("alertdialog")
