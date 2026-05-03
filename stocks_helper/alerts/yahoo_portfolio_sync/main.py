@@ -41,6 +41,7 @@ def main() -> None:
         client = YahooPortfolioClient(page=page, config=config)
         tickers_to_add = watch_list_main()
         cad_tickers, usd_tickers = _separate_cad_usd(tickers_to_add)
+        all_results = []
         # if ticker is USD then portfolio is "my holdings
         if usd_tickers:
             portfolio: PortfolioName = "my holdings"
@@ -48,6 +49,7 @@ def main() -> None:
                 portfolio_name=portfolio,
                 tickers=usd_tickers,
             )
+            all_results.extend(results)
         # if ticker is CAD then portfolio is "cad
         if cad_tickers:
             portfolio: PortfolioName = "cad"
@@ -55,9 +57,10 @@ def main() -> None:
                 portfolio_name=portfolio,
                 tickers=cad_tickers,
             )
+            all_results.extend(results)
 
         print("\n[RESULTS]")
-        for result in results:
+        for result in all_results:
             print(f"{result.ticker}: {result.status}")
 
         browser.close()
