@@ -4,13 +4,23 @@ import pandas as pd
 from pathlib import Path
 from collections import defaultdict
 from stocks_helper.stock_actions.percentage_change.daily_perc_chng import compute_daily_prec
+import os
+from dotenv import load_dotenv
 
-API_URL = "https://api.callmebot.com/telegram/group.php"
-API_KEY = "LTEwMDIzODAyODEzNTU"  # free trial!
+load_dotenv()
+
+API_URL = os.getenv("CALLMEBOT_TELEGRAM_API_URL")
+API_KEY = os.getenv("CALLMEBOT_TELEGRAM_API_KEY")
 
 def send_alert(sector_dict, label):
     if not sector_dict:
         return
+    
+    if not API_URL:
+        raise ValueError("Missing CALLMEBOT_TELEGRAM_API_URL in .env")
+
+    if not API_KEY:
+        raise ValueError("Missing CALLMEBOT_TELEGRAM_API_KEY in .env")
 
     message_parts = [f"{label}:"]
     for sector, ticker_tuples in sector_dict.items():
