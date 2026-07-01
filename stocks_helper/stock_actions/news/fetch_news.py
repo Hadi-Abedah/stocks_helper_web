@@ -19,8 +19,12 @@ def fetch_write_news(search_term, url, news_file):
     # Write titles to the file
     with open(news_file, "w") as fhand:
         for article in articles:
+            href = article.get("href")
+            if not isinstance(href, str):
+                continue
+
             title = article.text.strip()
-            link = "https://news.google.com" + article.get("href").removeprefix(".").strip()
+            link = "https://news.google.com" + href.removeprefix(".").strip()
             new_titles.append((title, link))
             fhand.write(f"{title}\n{link}\n\n")
 
