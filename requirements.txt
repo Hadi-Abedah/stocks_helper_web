@@ -29,7 +29,7 @@ pyparsing
 python-dateutil
 python-dotenv
 pytz
-requests
+httpx
 requests-oauthlib
 rsa
 six

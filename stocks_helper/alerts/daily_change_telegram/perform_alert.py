@@ -1,4 +1,4 @@
-import requests
+import httpx
 import yfinance as yf
 import pandas as pd
 from pathlib import Path
@@ -38,12 +38,12 @@ def send_alert(sector_dict, label):
     }
 
     try:
-        response = requests.get(API_URL, params=params)
+        response = httpx.get(API_URL, params=params, timeout=10)
         if response.status_code == 200:
             print("Message sent successfully!")
         else:
             print(f"Failed to send message. Status Code: {response.status_code}, Response: {response.text}")
-    except requests.exceptions.RequestException as e:
+    except httpx.HTTPError as e:
         print(f"Error sending request: {e}")
 
 
