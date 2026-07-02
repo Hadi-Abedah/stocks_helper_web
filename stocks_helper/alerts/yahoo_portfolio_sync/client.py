@@ -27,6 +27,15 @@ class YahooPortfolioClient:
         self.page.goto(self.config.portfolio_url, wait_until="domcontentloaded")
 
     def open_portfolio(self, portfolio_name: PortfolioName) -> None:
+       if "login.yahoo.com" in self.page.url.lower():
+           raise RuntimeError("Yahoo redirected to login; saved session is not authenticated.")
+
+       try:
+           if self.page.get_by_role("link", name="Sign in").is_visible(timeout=1000):
+               raise RuntimeError("Yahoo Finance is showing a Sign in link; saved session is not authenticated.")
+       except PlaywrightTimeoutError:
+           pass
+
        self.page.get_by_text("Portfolio Name", exact=True).wait_for(timeout=60_000)
 
        portfolio_link = self.page.locator(

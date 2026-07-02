@@ -39,47 +39,61 @@ def dismiss_optional_dialogs(page: Page) -> None:
         except Exception:
             pass
 
+# added by codex when I had login problem, probably not what I want, retest that later!
+def continue_from_signed_out_step(page: Page) -> bool:
+    try:
+        signed_out = page.get_by_text("Signed out", exact=True)
+        if signed_out.count() > 0:
+            signed_out.first.click(timeout=5000)
+            return True
+    except Exception:
+        pass
+    return False
+
 
 def looks_logged_in(page: Page) -> bool:
     """
-    Heuristic check only.
-    We do NOT depend on one exact text node because Yahoo UI is dynamic.
+    Check whether the saved browser state can reach the authenticated
+    Yahoo Finance portfolios page.
     """
     try:
         page.goto("https://finance.yahoo.com/portfolios", wait_until="domcontentloaded")
+        try:
+            page.wait_for_load_state("networkidle", timeout=10_000)
+        except PlaywrightTimeoutError:
+            pass
     except Exception:
         return False
 
     current_url = page.url.lower()
 
-    # Strong negative signal
+    # Strong negative signals.
     if "login.yahoo.com" in current_url:
         return False
 
-    # Strong positive signal:
-    # We reached Yahoo Finance and were not bounced to login.
-    if "finance.yahoo.com" in current_url:
-        # Try a few optional UI checks, but do not require all of them.
-        possible_texts = [
-            "My Portfolio",
-            "Portfolio",
-            "My Portfolios",
-            "Summary",
-        ]
+    try:
+        if page.get_by_role("link", name="Sign in").is_visible(timeout=1000):
+            return False
+    except Exception:
+        pass
 
-        for text in possible_texts:
-            try:
-                page.get_by_text(text).first.wait_for(timeout=3000)
-                return True
-            except Exception:
-                pass
+    if "finance.yahoo.com" not in current_url:
+        return False
 
-        # Even if text did not appear, being on finance.yahoo.com/portfolios
-        # without redirecting to login is already a useful signal.
-        if "/portfolios" in current_url:
+    # Require an authenticated portfolios-page marker. The old check returned
+    # true for the URL alone, which can misclassify a signed-out Yahoo shell.
+    authenticated_markers = [
+        selectors.ALL_PORTFOLIOS_TEXT,
+        "Portfolio Name",
+        selectors.CREATE_NEW_PORTFOLIO_BUTTON_NAME,
+    ]
+
+    for text in authenticated_markers:
+        try:
+            page.get_by_text(text, exact=True).first.wait_for(timeout=5000)
             return True
-
-        return True
+        except Exception:
+            pass
 
     return False
 
@@ -96,12 +110,16 @@ def login(page: Page, config: YahooPortfolioConfig) -> None:
     if not clicked_next:
         # Sometimes Enter may work if button locator changes
         page.keyboard.press("Enter")
-
+# added by codex when I had login problem, probably not what I want, retest that later!
+    continue_from_signed_out_step(page)
+#####################3
     try:
         page.wait_for_load_state("networkidle", timeout=10_000)
     except PlaywrightTimeoutError:
         pass
-
+# added by codex when I had login problem, probably not what I want, retest that later!
+    continue_from_signed_out_step(page)
+###########################################
     password_filled = _try_fill_first_label(page, selectors.PASSWORD_INPUT_LABELS, config.password)
     if not password_filled:
         raise RuntimeError("Could not find Yahoo password input.")
