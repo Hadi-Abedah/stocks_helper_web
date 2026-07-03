@@ -1,4 +1,4 @@
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from pathlib import Path
 
@@ -8,7 +8,7 @@ def fetch_write_news(search_term, url, news_file):
     """Fetch news for the current search term from the provided URL."""
     
     target_url = f"{url}?q={search_term}"
-    resp = requests.get(target_url)
+    resp = httpx.get(target_url, timeout=10)
     soup = BeautifulSoup(resp.text, "html.parser")
     
     # Extracting the news titles and links
@@ -19,8 +19,12 @@ def fetch_write_news(search_term, url, news_file):
     # Write titles to the file
     with open(news_file, "w") as fhand:
         for article in articles:
+            href = article.get("href")
+            if not isinstance(href, str):
+                continue
+
             title = article.text.strip()
-            link = "https://news.google.com" + article.get("href").removeprefix(".").strip()
+            link = "https://news.google.com" + href.removeprefix(".").strip()
             new_titles.append((title, link))
             fhand.write(f"{title}\n{link}\n\n")
 
