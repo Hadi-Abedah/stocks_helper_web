@@ -17,6 +17,7 @@ services:
     working_dir: /app
     env_file:
       - stocks_helper/snaptrade/.env
+      - .env
     environment:
       PYTHONPATH: /app:/app/web
       DJANGO_SETTINGS_MODULE: stocks_web.settings

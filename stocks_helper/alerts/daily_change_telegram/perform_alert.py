@@ -7,7 +7,7 @@ from stocks_helper.stock_actions.percentage_change.daily_perc_chng import comput
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv() # local 
 
 API_URL = os.getenv("CALLMEBOT_TELEGRAM_API_URL")
 API_KEY = os.getenv("CALLMEBOT_TELEGRAM_API_KEY")
