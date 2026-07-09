@@ -115,6 +115,7 @@ def create_event(
     calendar_id: str = DEFAULT_CALENDAR_ID,
     transparency: Optional[str] = None,  # "opaque" or "transparent"
     guests: Optional[Iterable] = None,   # Iterable[str] or Iterable[dict] like {"email": "...", ...}
+    event_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Create an event (timed or all-day) with reminders and optional guests.
@@ -128,6 +129,8 @@ def create_event(
         **_event_time_payload(start_dt, end_dt, all_day_date, tz),
         "reminders": _reminders_payload(reminder_minutes, email_reminder_minutes),
     }
+    if event_id:
+        body["id"] = event_id
 
     if guests:
         attendees: List[Dict[str, Any]] = []
@@ -152,7 +155,25 @@ def create_event(
         created = service.events().insert(calendarId=calendar_id, body=body).execute()
         return created
     except HttpError as e:
+        # Idempotent create: another environment may have already inserted this
+        # deterministic event ID, so fetch it and treat the create as successful.
+        if event_id and e.resp.status == 409:
+            return get_event(event_id=event_id, calendar_id=calendar_id)
         raise RuntimeError(f"Calendar insert failed: {e}")
+
+
+def get_event(
+    event_id: str,
+    calendar_id: str = DEFAULT_CALENDAR_ID,
+) -> Dict[str, Any]:
+    """
+    Fetch an event by ID.
+    """
+    service = _get_service()
+    try:
+        return service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    except HttpError as e:
+        raise RuntimeError(f"Calendar get failed: {e}")
 
 def list_upcoming(
     max_results: int = 10,

@@ -1,4 +1,5 @@
 import json
+import hashlib
 from pathlib import Path
 from stocks_helper.alerts.earnings_calendar.calendar_actions import create_event, update_event, delete_event, DEFAULT_TZ, DEFAULT_CALENDAR_ID
 from datetime import datetime, timedelta
@@ -15,6 +16,20 @@ def _parse_local_window(date_str: str):
     start = datetime.combine(day, datetime.min.time()).replace(tzinfo=TZ) + timedelta(hours=9)
     end   = start + timedelta(hours=1)
     return start, end
+
+def _earnings_event_id(ticker: str, date_str: str) -> str:
+    """
+    Return a deterministic Google Calendar event ID for a ticker/date pair.
+
+    calendar_dates.json is a local cache and can drift between cloud/local runs.
+    The deterministic event ID is the second dedup layer: Google Calendar rejects
+    duplicate inserts for the same ticker/date, and we treat that as success.
+
+    Calendar event IDs allow lowercase letters a-v and digits 0-9.
+    """
+    key = f"earnings:{ticker.upper()}:{date_str}"
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    return f"earn{digest[:48]}"
 
 def main() -> None:
     """Compare dates.json with calendar_dates.json; create/update Google Calendar events as needed.
@@ -61,6 +76,7 @@ def main() -> None:
 
         if stock not in calendar_dates:
             # we have not recoreded any event for this stock yet: create it
+            event_id = _earnings_event_id(stock, date_str)
             event = create_event(
                 summary=f"{stock} Earnings Call",
                 start_dt=start_dt,
@@ -72,7 +88,8 @@ def main() -> None:
                     60*24*1,  # 1 day
                 ],
                 calendar_id=DEFAULT_CALENDAR_ID,
-                guests=["cyberpenguinization@gmail.com"]
+                guests=["cyberpenguinization@gmail.com"],
+                event_id=event_id,
             )
             changes_to_calendar_dates[stock] ={ date_str : event["id"] }
             #calendar_dates[stock] = {date_str: event["id"]}
@@ -88,30 +105,39 @@ def main() -> None:
             if stored_date_str != date_str: 
                 # date has changed and it is still in the future
                 if stored_date> datetime.today().date():
-                    # Event date changed: update existing event
+                    # Event date changed: replace the old dated event with the deterministic new dated event.
                     existing_event_id = next(iter(calendar_dates[stock].values()))
                     try:
-                        event = update_event(
-                            event_id=existing_event_id,
-                            updates={
-                                # If your update_event expects RFC3339 strings instead of datetimes, use start_dt.isoformat()
-                                "start": {"dateTime": start_dt.isoformat(), "timeZone": DEFAULT_TZ},
-                                "end": {"dateTime": end_dt.isoformat(), "timeZone": DEFAULT_TZ},
-                                # optionally: "start": {"timeZone": DEFAULT_TZ}, "end": {"timeZone": DEFAULT_TZ},
-                            },
+                        event_id = _earnings_event_id(stock, date_str)
+                        event = create_event(
+                            summary=f"{stock} Earnings Call",
+                            start_dt=start_dt,
+                            end_dt=end_dt,
+                            tz=DEFAULT_TZ,
+                            reminder_minutes=[
+                                60*24*5,  # 5 days
+                                60*24*2,  # 2 days
+                                60*24*1,  # 1 day
+                            ],
+                            calendar_id=DEFAULT_CALENDAR_ID,
+                            guests=["cyberpenguinization@gmail.com"],
+                            event_id=event_id,
                         )
+                        if existing_event_id != event["id"]:
+                            delete_event(existing_event_id, calendar_id=DEFAULT_CALENDAR_ID)
                     except Exception as e:
-                        print(f"Error updating event for {stock}: {e}")
+                        print(f"Error replacing event for {stock}: {e}")
                         continue
                     changes_to_calendar_dates[stock] ={ date_str : event["id"] }
                     #calendar_dates[stock] = {date_str: event["id"]}
-                    print(f"Updated event for {stock}")
+                    print(f"Replaced event for {stock}")
                 elif stored_date < datetime.today().date():
                     # Event has passed, delete entry from calendar_date and  create a new event, old event stays in calendar
                     #delete old entry
                     del calendar_dates[stock]
                     
                     #create new event
+                    event_id = _earnings_event_id(stock, date_str)
                     event = create_event(
                     summary=f"{stock} Earnings Call",
                     start_dt=start_dt,
@@ -123,7 +149,8 @@ def main() -> None:
                         60*24*1,  # 1 day
                     ],
                     calendar_id=DEFAULT_CALENDAR_ID,
-                    guests=["cyberpenguinization@gmail.com"]
+                    guests=["cyberpenguinization@gmail.com"],
+                    event_id=event_id,
                     )
                     changes_to_calendar_dates[stock] ={ date_str : event["id"] }
                     #calendar_dates[stock] = {date_str: event["id"]}
