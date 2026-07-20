@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from .schemas import YahooPortfolioConfig
@@ -38,6 +41,33 @@ def dismiss_optional_dialogs(page: Page) -> None:
                 locator.first.click(timeout=2000)
         except Exception:
             pass
+
+
+def _visible_with_timeout(locator, timeout_ms: int = 3000) -> bool:
+    try:
+        locator.first.wait_for(state="visible", timeout=timeout_ms)
+        return True
+    except Exception:
+        return False
+
+
+def _print_auth_debug_state(page: Page) -> None:
+    screenshot_dir = Path(__file__).resolve().parent / "debug_screenshots"
+    screenshot_dir.mkdir(exist_ok=True)
+    screenshot_path = screenshot_dir / "auth_not_detected.png"
+
+    print(f"[DEBUG] Auth check URL: {page.url}")
+    try:
+        print(f"[DEBUG] Auth check title: {page.title()}")
+    except Exception:
+        pass
+
+    try:
+        page.screenshot(path=str(screenshot_path), full_page=True)
+        print(f"[DEBUG] Saved auth debug screenshot: {screenshot_path}")
+    except Exception as exc:
+        print(f"[DEBUG] Could not save auth debug screenshot: {exc}")
+
 
 # added by codex when I had login problem, probably not what I want, retest that later!
 def continue_from_signed_out_step(page: Page) -> bool:
@@ -80,20 +110,27 @@ def looks_logged_in(page: Page) -> bool:
     if "finance.yahoo.com" not in current_url:
         return False
 
-    # Require an authenticated portfolios-page marker. The old check returned
-    # true for the URL alone, which can misclassify a signed-out Yahoo shell.
+    # Require an authenticated portfolio marker. Prefer role/link checks and
+    # quote links over exact page text because Yahoo changes spacing/markup.
     authenticated_markers = [
-        selectors.ALL_PORTFOLIOS_TEXT,
-        "Portfolio Name",
-        selectors.CREATE_NEW_PORTFOLIO_BUTTON_NAME,
+        page.get_by_role(
+            "link",
+            name=re.compile(rf"^{re.escape(selectors.MY_PORTFOLIO_TRIGGER_TEXT)}$", re.I),
+        ),
+        page.get_by_role(
+            "button",
+            name=re.compile(rf"^{re.escape(selectors.MY_PORTFOLIO_TRIGGER_TEXT)}$", re.I),
+        ),
+        page.get_by_text(selectors.ALL_PORTFOLIOS_TEXT),
+        page.get_by_text("Portfolio Name"),
+        page.get_by_role("button", name=selectors.CREATE_NEW_PORTFOLIO_BUTTON_NAME),
+        page.get_by_role("button", name=selectors.ADD_TICKERS_BUTTON_NAME),
+        page.locator("table tbody tr td:first-child a[href^='/quote/']"),
     ]
 
-    for text in authenticated_markers:
-        try:
-            page.get_by_text(text, exact=True).first.wait_for(timeout=5000)
+    for marker in authenticated_markers:
+        if _visible_with_timeout(marker, timeout_ms=5000):
             return True
-        except Exception:
-            pass
 
     return False
 
@@ -148,6 +185,7 @@ def ensure_logged_in(page: Page, config: YahooPortfolioConfig, context) -> None:
 
     # If auto login did not finish, allow manual completion.
     if not looks_logged_in(page):
+        _print_auth_debug_state(page)
         print("[INFO] Automatic login did not fully complete.")
         print("[INFO] Browser will pause now.")
         print("[INFO] Please finish Yahoo login manually in the browser.")
