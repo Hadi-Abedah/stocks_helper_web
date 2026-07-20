@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Literal
 
 from playwright.sync_api import Page, Locator, TimeoutError as PlaywrightTimeoutError
@@ -22,6 +23,11 @@ class YahooPortfolioClient:
     def __init__(self, page: Page, config: YahooPortfolioConfig) -> None:
         self.page = page
         self.config = config
+        self.debug_screenshot_dir = Path(__file__).resolve().parent / "debug_screenshots"
+
+    def _debug_screenshot_path(self, filename: str) -> str:
+        self.debug_screenshot_dir.mkdir(exist_ok=True)
+        return str(self.debug_screenshot_dir / filename)
 
     def open_portfolios_page(self) -> None:
         self.page.goto(self.config.portfolio_url, wait_until="domcontentloaded")
@@ -54,7 +60,10 @@ class YahooPortfolioClient:
 
            href = portfolio_link.get_attribute("href")
            if href is None:
-               self.page.screenshot(path="/app/yahoo_portfolio_click_timeout.png", full_page=True)
+               self.page.screenshot(
+                   path=self._debug_screenshot_path("yahoo_portfolio_click_timeout.png"),
+                   full_page=True,
+               )
                raise RuntimeError(f"Could not find portfolio href for {portfolio_name}")
 
            if href.startswith("/"):
@@ -70,7 +79,10 @@ class YahooPortfolioClient:
        except Exception:
            print("Did not reach expected portfolio page.")
            print("Current URL:", self.page.url)
-           self.page.screenshot(path="/app/yahoo_portfolio_debug.png", full_page=True)
+           self.page.screenshot(
+               path=self._debug_screenshot_path("yahoo_portfolio_debug.png"),
+               full_page=True,
+           )
            raise
 
     def click_add_tickers(self) -> None:
@@ -169,6 +181,21 @@ class YahooPortfolioClient:
                 print(f"[INFO] {result.ticker}: {result.status} after retry")
                 results.append(result)
         return results
+
+    def read_portfolio_tickers(self, portfolio_name: PortfolioName) -> set[str]:
+        self.open_portfolios_page()
+        self.open_portfolio(portfolio_name)
+
+        ticker_links = self.page.locator("table tbody tr td:first-child a[href^='/quote/']")
+        ticker_links.first.wait_for(timeout=30_000)
+
+        tickers: set[str] = set()
+        for i in range(ticker_links.count()):
+            ticker = ticker_links.nth(i).inner_text().strip().upper()
+            if ticker:
+                tickers.add(ticker)
+
+        return tickers
 
 
 ######
