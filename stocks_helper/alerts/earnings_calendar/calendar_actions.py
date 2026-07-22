@@ -1,4 +1,4 @@
-# calendar_reminders.py
+# calendar_actions.py
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional, Dict, Any, List
@@ -15,9 +15,6 @@ DEFAULT_CALENDAR_ID = "primary"
 DEFAULT_TZ = "Asia/Nicosia"  # adjust if you prefer
 
 # ---------- Auth / Service ----------
-
-
-import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 credentials_path = os.path.join(BASE_DIR, "credentials.json")
