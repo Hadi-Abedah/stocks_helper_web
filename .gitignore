@@ -70,3 +70,7 @@ web/db.sqlite3
 # Yahoo automation secrets
 stocks_helper/alerts/yahoo_portfolio_sync/.yahoo_state.json
 stocks_helper/alerts/yahoo_portfolio_sync/.env
+
+# Google Finance automation secrets
+stocks_helper/alerts/google_finance_sync/.google_state.json
+stocks_helper/alerts/google_finance_sync/.google_chrome_profile/

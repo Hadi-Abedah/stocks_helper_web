@@ -10,8 +10,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Show workflow information
         run: |
           echo "The workflow was triggered successfully."
           echo "Branch: $GITHUB_REF_NAME"
           echo "Commit: $GITHUB_SHA"
+
+      - name: Inspect checked-out repository
+        run: |
+          echo "Current directory:"
+          pwd
+
+          echo "Repository files:"
+          ls -la
+
+          echo "Tracked project structure:"
+          find . -maxdepth 2 -type f | sort
