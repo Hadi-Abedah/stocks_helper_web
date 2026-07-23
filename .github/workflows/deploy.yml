@@ -1,0 +1,17 @@
+name: Production pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify-trigger:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Show workflow information
+        run: |
+          echo "The workflow was triggered successfully."
+          echo "Branch: $GITHUB_REF_NAME"
+          echo "Commit: $GITHUB_SHA"
