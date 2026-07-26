@@ -6,12 +6,9 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_ROOT"
 
-echo "=== Starting deployment ==="
+echo "=== Updating repository ==="
 
 git fetch origin
 git reset --hard origin/main
 
-docker compose build
-docker compose up -d
-
-echo "=== Deployment complete yaya==="
+echo "=== Repository updated ==="
