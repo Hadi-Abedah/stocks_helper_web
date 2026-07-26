@@ -14,4 +14,4 @@ git reset --hard origin/main
 docker compose build
 docker compose up -d
 
-echo "=== Deployment complete ==="
+echo "=== Deployment complete yaya==="
