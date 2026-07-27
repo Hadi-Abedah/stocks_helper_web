@@ -1,10 +1,4 @@
 {
-    "LNR.TO": {
-        "2026-05-06": "936q1c6ak3ci5lb9u1htjcci2c"
-    },
-    "PPTA.TO": {
-        "2026-05-08": "h18ebha936ab5pmmcae44hhl44"
-    },
     "FSLR": {
         "2026-07-30": "iof6tj5iq1nfn64aie1n3b0pls"
     },
@@ -18,7 +12,7 @@
         "2026-08-13": "cria42i6flrdlb9klo7ebd1ols"
     },
     "AC.TO": {
-        "2026-07-27": "2n8cjibtrd8bqlj58861avkff8"
+        "2026-08-11": "earn63c552874eebedbd5cd78a79447ab402030b219a4d96120f"
     },
     "SMCI": {
         "2026-08-04": "mj2vllk3leb1ar4k8ogl8ad4gs"
@@ -35,13 +29,25 @@
     "ALB": {
         "2026-08-05": "ouo7bd3opp0332damo1an1tv80"
     },
-    "COUR": {
-        "2026-07-23": "ketbbkns18nl8i2cjj71m3n670"
-    },
     "AMD": {
         "2026-08-04": "lmnva04hejcm0k6ge2fr6098l8"
     },
     "MSFT": {
         "2026-07-29": "6crst1mon4negteoutg2sst1l0"
+    },
+    "LNR.TO": {
+        "2026-08-12": "earnf5be16bb503b9856e27cf97c673e14d8f6837f8901151525"
+    },
+    "JKS": {
+        "2026-08-27": "earn681466ed47c9f03d4416d400cbb5138084fb0dfbd7c6cc73"
+    },
+    "CLBT": {
+        "2026-08-13": "earnd52f5161288871d4cdd7217ec4e5a04870a8aa0e7b99ce1f"
+    },
+    "PPTA.TO": {
+        "2026-08-13": "earn6e6a0a26bd33f6a35bebcefbc0f3fe7d5552858c851cb681"
+    },
+    "COUR": {
+        "2026-07-29": "earn79be526f0d466719b86f2a29f5be33fa6795af3234d42bec"
     }
 }

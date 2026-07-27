@@ -104,7 +104,7 @@ def main() -> None:
             # compare dates
             if stored_date_str != date_str: 
                 # date has changed and it is still in the future
-                if stored_date> datetime.today().date():
+                if stored_date >= datetime.today().date():
                     # Event date changed: replace the old dated event with the deterministic new dated event.
                     existing_event_id = next(iter(calendar_dates[stock].values()))
                     try:
