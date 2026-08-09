@@ -4,7 +4,8 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "stocks_web.settings")
 django.setup()
 
-from dashboard.models import Journal
+from django.db import transaction as db_transaction
+from dashboard.models import Journal, Transaction
 from .transaction_parser import parse_transactions_db, populate_transactions_db
 
 
@@ -13,8 +14,8 @@ def write_journal_to_db():
     Parse *unprocessed* SnapTrade transactions and append their corresponding
     double-entry accounting rows to the database ledger.
 
-    This function assumes `parse_transactions_db()` already performs
-    transaction-level deduplication via processed transaction IDs.
+    This function assumes `parse_transactions_db()` already skips transactions
+    with a populated `Transaction.accounting_processed_at`.
 
     `parse_transactions_db()` is a generator that yields:
 
@@ -45,18 +46,28 @@ def write_journal_to_db():
         if not rows:
             continue
 
-        for row in rows:
-            if not isinstance(row, (list, tuple)) or len(row) != 5:
+        with db_transaction.atomic():
+            transaction_obj = Transaction.objects.select_for_update().get(
+                transaction_id=tx_id
+            )
+
+            if transaction_obj.accounting_processed_at is not None:
                 continue
 
-            Journal.objects.create(
-                date=row[0],
-                account=row[1],
-                debit=row[2],
-                credit=row[3],
-                description=row[4],
-                tx_id_id=tx_id,
-            )
+            for row in rows:
+                if not isinstance(row, (list, tuple)) or len(row) != 5:
+                    continue
+
+                Journal.objects.get_or_create(
+                    date=row[0],
+                    account=row[1],
+                    debit=row[2],
+                    credit=row[3],
+                    description=row[4],
+                    tx_id=transaction_obj,
+                )
+
+            transaction_obj.mark_accounting_processed()
 
         written.append((tx_id, rows))
 

@@ -61,7 +61,7 @@ def parse_transactions():
     """ parse each transaction and outputs csv rows(list of lists), each row is an account affected by that transaction"""
     import os
     from .snaptrade_api import get_transactions_for_user
-    from .transactions import deposit, buy_usd_stock, sell_usd_stock, buy_cad_stock, sell_cad_stock, convert_cad_to_usd, fee, dividend, tax, buy_usd_put_option, buy_usd_call_option, option_expire #, sell_cad_call_option, sell_cad_put_option 
+    from .transactions import deposit, buy_usd_stock, sell_usd_stock, buy_cad_stock, sell_cad_stock, convert_cad_to_usd, fee, dividend, tax, buy_usd_put_option, buy_usd_call_option, option_expire, sell_usd_put_option #, sell_cad_call_option, sell_cad_put_option 
     from .helpers import was_transaction_processed, mark_transaction_as_processed, find_credited_invst_amount, update_invst_amounts
     outputs = []
     transactions = get_transactions_for_user()
@@ -81,12 +81,13 @@ def parse_transactions():
                 else:  # CALL
                     output = buy_usd_call_option(transaction) #if usd else buy_cad_call_option(transaction)
 
-            #elif transaction["type"] == "SELL":
-            #    if transaction["option_symbol"]["option_type"] == "PUT":
-            #        output = sell_usd_put_option(transaction) if usd else sell_cad_put_option(transaction)
-            #    else:  # CALL
-            #        output = sell_usd_call_option(transaction) if usd else sell_cad_call_option(transaction)
-            #
+            elif transaction["type"] == "SELL":
+                if usd and transaction["option_symbol"]["option_type"] == "PUT":
+                    output = sell_usd_put_option(transaction)
+                else:
+                    raise ValueError(
+                        f"Unknown option SELL transaction: {transaction}"
+                    )
             elif transaction["type"] == "OPTIONEXPIRATION":
                output = option_expire(transaction)
 
@@ -140,8 +141,6 @@ def parse_transactions():
         outputs.append(output)    
     return outputs
 
-from .helpers import was_transaction_processed, mark_transaction_as_processed
-
 # keep your HARD_CODED dict as-is
 
 
@@ -163,9 +162,10 @@ def parse_transactions_db():
     from .transactions import (
         deposit, buy_usd_stock, sell_usd_stock, buy_cad_stock, sell_cad_stock,
         convert_cad_to_usd, fee, dividend, tax,
-        buy_usd_put_option, buy_usd_call_option, option_expire,
+        buy_usd_put_option, buy_usd_call_option, sell_usd_put_option,
+        option_expire,
     )
-    from .helpers import was_transaction_processed  # (you already import at top; keeping local is fine)
+    from dashboard.models import Transaction
 
     # local heleprs 
     def _to_decimal(v):
@@ -192,7 +192,10 @@ def parse_transactions_db():
         if not tid:
             continue
 
-        if was_transaction_processed(tid, db=True):
+        if Transaction.objects.filter(
+            transaction_id=tid,
+            accounting_processed_at__isnull=False,
+        ).exists():
             continue
 
         # Default output
@@ -208,11 +211,21 @@ def parse_transactions_db():
                 else:
                     output = buy_usd_call_option(transaction, db=True)
 
+            elif transaction["type"] == "SELL":
+                if usd and transaction["option_symbol"]["option_type"] == "PUT":
+                    output = sell_usd_put_option(transaction, db=True)
+                else:
+                    raise ValueError(
+                        f"Unknown option SELL transaction: {transaction}"
+                    )
+
             elif transaction["type"] == "OPTIONEXPIRATION":
                 output = option_expire(transaction, db=True)
 
             else:
-                raise ValueError(f"Unknown option transaction type {transaction['type']}")
+                raise ValueError(
+                    f"Unknown option transaction type transaction: {transaction}"
+                )
 
         elif transaction["type"] == "CONTRIBUTION":
             output = deposit(transaction, db=True)
@@ -253,12 +266,6 @@ def parse_transactions_db():
             with open(wrong_file_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, default=str, indent=4) + "\n")
     
-            try:
-                if tid:
-                    mark_transaction_as_processed(tid, db=True)
-            except Exception:
-                pass
-
             output = []  
 
         # --- row-layer override for hardcoded TIDs ---

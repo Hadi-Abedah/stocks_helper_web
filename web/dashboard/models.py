@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
     # Mirror of the CSV columns: Date, Account, Debit, Credit, Description
 
 # Create your models here.
@@ -15,6 +16,11 @@ class Transaction(models.Model):
     units  = models.DecimalField(max_digits=20, decimal_places=6, null=True, blank=True)
     fee    = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
     date = models.DateField(null=True, blank=True)
+    accounting_processed_at = models.DateTimeField(null=True, blank=True)
+
+    def mark_accounting_processed(self):
+        self.accounting_processed_at = timezone.now()
+        self.save(update_fields=['accounting_processed_at'])
 
     def __str__(self):
         return f"{self.units} shares of {self.stock_symbol} at ${self.price} on {self.date}"
@@ -45,3 +51,29 @@ class Journal(models.Model):
             models.Index(fields=['account']),
         ]
         unique_together = ('date', 'account', 'debit', 'credit', 'description', 'tx_id')
+
+
+class InvestmentLot(models.Model):
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='investment_lots')
+    symbol = models.CharField(max_length=10, db_index=True)
+    currency = models.CharField(max_length=3)
+    price = models.DecimalField(max_digits=20, decimal_places=6)
+    quantity_original = models.DecimalField(max_digits=20, decimal_places=6)
+    quantity_remaining = models.DecimalField(max_digits=20, decimal_places=6)
+    acquired_date = models.DateField()
+    is_option = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.quantity_remaining}/{self.quantity_original} {self.symbol} at {self.price}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['symbol', 'is_option', 'acquired_date']),
+            models.Index(fields=['currency']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['transaction', 'symbol', 'is_option'],
+                name='unique_investment_lot_transaction_symbol_option',
+            ),
+        ]

@@ -112,10 +112,29 @@ def get_transactions_for_user(start_date='2024-04-01', end_date=None):
     
     return resp
 
+def enable_disaled_connection():
+    """ Enable disabled connection for a user. """
+
+    from pprint import pprint
+    from snaptrade_client import SnapTrade, SnapTradeAuth
+
+    snaptrade = SnapTrade(
+        auth=SnapTradeAuth.commercial_api_key(
+            consumer_key="YuywPoWQLpNqeUFrMFmUxH2VQx8F7aUokEXmuammzUKBmdKz0m",
+            client_id="PERSONL-TEST-HBOVW",
+        )
+    )
+
+    response = snaptrade.authentication.login_snap_trade_user(
+        reconnect="a60daeab-0852-48be-81b1-c71a22dcae0c",
+        user_id="PERSONL-TEST-HBOVW",
+        user_secret="6327a19d-cd98-4b67-aa49-dd482c2cfeb7"
+    )
+    pprint(response.body)
 if __name__ == "__main__":
     #get_api_status()
     #list_accounts()
     
     #list_account_holdings()
-    resp = get_transactions_for_user("2025-09-03", "2025-09-03")  #just to make sure all good!
+    resp = get_transactions_for_user("2026-06-23", "2026-08-03")  #just to make sure all good!
     print(json.dumps(resp, indent=4))

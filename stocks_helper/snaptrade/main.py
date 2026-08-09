@@ -10,10 +10,9 @@ import argparse
 
 def main(db: bool = False, csv: bool = False, google_sheets: bool = False):
     if db:
-        print("Database functionality not implemented yet.")
-
-        write_journal_to_db()
-        #write_transactions_to_db(force=True)
+        print("Writing SnapTrade transactions and journal rows to database.")
+        write_transactions_to_db(force=True) # make a copy of the transactions in the database(no processed at yet(which is important for the journal rows))
+        write_journal_to_db() # atomic operation that updates the investment lots(not implemented atomically yet), creates journal rows, and sets the processed flag for all unprocessed transactions
     elif csv:
         csv_writer()
     elif google_sheets:
