@@ -8,10 +8,9 @@ services:
       DJANGO_SETTINGS_MODULE: stocks_web.settings
     volumes:
       - .:/app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn stocks_web.wsgi:application --bind 0.0.0.0:8000 --workers 2 --reload
     ports:
       - "8000:8000"
-
   automation:
     build: .
     working_dir: /app
